@@ -1,0 +1,154 @@
+-- Define the GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "GameEnhancer"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- Main frame
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 200, 0, 240)
+Frame.Position = UDim2.new(0.5, -100, 0.5, -120)
+Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Frame.Visible = true -- Initially visible
+Frame.Parent = ScreenGui
+
+-- Add UI corner for rounded edges on Frame
+local FrameCorner = Instance.new("UICorner")
+FrameCorner.CornerRadius = UDim.new(0, 10)
+FrameCorner.Parent = Frame
+
+-- Title label
+local Title = Instance.new("TextLabel")
+Title.Text = "Game Enhancer"
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 18
+Title.Parent = Frame
+
+-- Input TextBox for hitbox size
+local TextBox = Instance.new("TextBox")
+TextBox.Size = UDim2.new(1, -20, 0, 40)
+TextBox.Position = UDim2.new(0, 10, 0, 50)
+TextBox.PlaceholderText = "Enter hitbox size"
+TextBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.Font = Enum.Font.SourceSans
+TextBox.TextSize = 18
+TextBox.Parent = Frame
+
+-- Add UI corner for rounded edges on TextBox
+local TextBoxCorner = Instance.new("UICorner")
+TextBoxCorner.CornerRadius = UDim.new(0, 8)
+TextBoxCorner.Parent = TextBox
+
+-- Toggle button for expanding hitbox
+local ToggleHitboxButton = Instance.new("TextButton")
+ToggleHitboxButton.Size = UDim2.new(1, -20, 0, 40)
+ToggleHitboxButton.Position = UDim2.new(0, 10, 0, 100)
+ToggleHitboxButton.Text = "Expand Hitbox"
+ToggleHitboxButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+ToggleHitboxButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleHitboxButton.Font = Enum.Font.SourceSansBold
+ToggleHitboxButton.TextSize = 18
+ToggleHitboxButton.Parent = Frame
+
+-- Variables
+local Players = game:GetService("Players")
+local isExpanded = false
+local hitboxSize = Vector3.new(2, 2, 1)
+local player = Players.LocalPlayer
+
+-- Function to update hitbox size
+local function applyHitboxSize()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            local humanoidRootPart = player.Character.HumanoidRootPart
+            if humanoid and humanoid.Health > 0 then
+                humanoidRootPart.Size = isExpanded and hitboxSize or Vector3.new(2, 2, 1)
+                humanoidRootPart.Transparency = isExpanded and 0.5 or 1
+                humanoidRootPart.CanCollide = false
+            end
+        end
+    end
+end
+
+-- Function to update the hitbox size of a newly joined player
+local function onPlayerAdded(player)
+    player.CharacterAdded:Connect(function(character)
+        wait(0.5) -- Give time for the character to fully load
+        if character:FindFirstChild("HumanoidRootPart") then
+            local humanoidRootPart = character.HumanoidRootPart
+            humanoidRootPart.Size = isExpanded and hitboxSize or Vector3.new(2, 2, 1)
+            humanoidRootPart.Transparency = isExpanded and 0.5 or 1
+            humanoidRootPart.CanCollide = false
+        end
+    end)
+end
+
+-- Connect player join to apply hitbox changes
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+-- Toggle hitbox expansion
+ToggleHitboxButton.MouseButton1Click:Connect(function()
+    local input = tonumber(TextBox.Text)
+    if input and input > 0 then
+        hitboxSize = Vector3.new(input, input, input)
+        isExpanded = not isExpanded
+        ToggleHitboxButton.Text = isExpanded and "Reset Hitbox" or "Expand Hitbox"
+        applyHitboxSize()
+    else
+        warn("Please enter a valid number greater than 0.")
+    end
+end)
+
+-- Toggle visibility of the GUI
+local ToggleShowButton = Instance.new("TextButton")
+ToggleShowButton.Size = UDim2.new(0, 100, 0, 40)
+ToggleShowButton.Position = UDim2.new(0.5, -50, 0, 10) -- Positioning above the GUI
+ToggleShowButton.Text = "Hide GUI"
+ToggleShowButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+ToggleShowButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleShowButton.Font = Enum.Font.SourceSansBold
+ToggleShowButton.TextSize = 18
+ToggleShowButton.Parent = ScreenGui
+
+ToggleShowButton.MouseButton1Click:Connect(function()
+    Frame.Visible = not Frame.Visible
+    ToggleShowButton.Text = Frame.Visible and "Hide GUI" or "Show GUI"
+end)
+
+-- Make the Frame draggable
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+Frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+Frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function()
+    if dragging and dragInput then
+        local delta = dragInput.Position - dragStart
+        Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
